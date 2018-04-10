@@ -4,9 +4,11 @@ Class Dotenv
     ' https://12factor.net/config
 
     Private IniFileDictionary
+    Private Wss
 
     Private Sub class_Initialize()
         Set IniFileDictionary = CreateObject("Scripting.Dictionary")
+        Set Wss = CreateObject("WScript.Shell")        
 	End Sub
 
     ' @link http://www.4guysfromrolla.com/webtech/011999-1.shtml
@@ -76,8 +78,33 @@ Class Dotenv
         IniFileValue = StrBuf
     End Function
 
-    Public Property Get getenv(key) 
-        getenv = IniFileValue("|" & key)
+    Public Property Get getenv(key)
+        getenv = ""
+
+        ' see .Request.ServerVariables
+        ServerVariablesKey = Request.ServerVariables(key)
+        IsKeyServerVariables = (ServerVariablesKey <> "")
+
+        ' see SO Environment Variables
+        SoEnvironmentKey = Wss.ExpandEnvironmentStrings("%" & key & "%")
+        IsKeySoEnvironment = (SoEnvironmentKey <> "" And SoEnvironmentKey <> "%" & key & "%")
+
+        ' see .env
+        DotenvKey = IniFileValue("|" & key)
+        IsKeyDotenv = (DotenvKey <> "")
+
+        If (IsKeyServerVariables) then
+            getenv = ServerVariablesKey
+        End if
+
+        If (IsKeySoEnvironment) then
+            getenv = SoEnvironmentKey
+        End if
+
+        If (IsKeyDotenv) then
+            getenv = DotenvKey
+        End if
+
 	End Property
 
 End Class

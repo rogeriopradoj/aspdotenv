@@ -1,12 +1,54 @@
 ASP dotenv
 ==========
 
+This is a ASP version of the original [PHP Dotenv](https://github.com/vlucas/phpdotenv).
+
 When using PHP dotenv, it loads environment variables from `.env` to `getenv()`, `$_ENV` and
 `$_SERVER` automagically.
 
-In asp, we will try to do same same, however in the functions `Request.ServerVariables` and `WScript.Shell.Environment("PROCESS")`
+In asp, we will try to do same same, but using always a function wrapper for `.env`, and result of `Request.ServerVariables` and `WScript.Shell.Environment("PROCESS")` ([more info here](https://stackoverflow.com/questions/6360036/getting-environment-variables-in-classic-asp?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa)).
 
-This is a ASP version of the original [PHP Dotenv](https://github.com/vlucas/phpdotenv).
+Here is an example of usage:
+
+```asp
+<!--
+file: example.asp
+-->
+
+<!--Firstly, reference Dotenv.asp class file-->
+<!--#include file="Dotenv.asp"-->
+
+<%
+' After that, create an variable...
+Dim env
+
+' ... and instanciate the object...
+Set env = new Dotenv
+
+' Finally, load environment file
+call env.IniFileLoad("virtual=.env")
+
+
+' Now, in any part of your code that see "env" object instantiation...
+' You just need to call env.getenv("VARIABLE_NAME")
+
+' Variables present in .env
+Response.Write("DB_HOST: " & env.getenv("DB_HOST") & "<br>" & vbCrLf)
+Response.Write("DB_DATABASE: " & env.getenv("DB_DATABASE") & "<br>" & vbCrLf)
+Response.Write("DB_USERNAME: " & env.getenv("DB_USERNAME") & "<br>" & vbCrLf)
+
+' Variables present in SO Environment Variables
+Response.Write("PATH: " & env.getenv("PATH") & "<br>" & vbCrLf)
+Response.Write("windir: " & env.getenv("windir") & "<br>" & vbCrLf)
+Response.Write("TEMP: " & env.getenv("TEMP") & "<br>" & vbCrLf)
+
+' Variables present in Request.ServerVariables
+Response.Write("REMOTE_USER: " & env.getenv("REMOTE_USER") & "<br>" & vbCrLf)
+Response.Write("SCRIPT_NAME: " & env.getenv("SCRIPT_NAME") & "<br>" & vbCrLf)
+Response.Write("REQUEST_METHOD: " & env.getenv("REQUEST_METHOD") & "<br>" & vbCrLf)
+
+%>
+```
 
 Why .env?
 ---------
@@ -28,11 +70,6 @@ it.
 
 * NO editing server configuration
 * EASY portability and sharing of required ENV values
-
-Installation with Composer
---------------------------
-
-[TODO]
 
 Usage
 -----
@@ -69,28 +106,6 @@ S3_BUCKET="devbucket"
 SECRET_KEY="abc123"
 ```
 
-You can then load `.env` in your application with:
-
-[TODO]
-
-### Nesting Variables
-
-It's possible to nest an environment variable within another, useful to cut
-down on repetition.
-
-This is done by wrapping an existing environment variable in `${…}` e.g.
-
-```shell
-BASE_DIR="/var/webroot/project-root"
-CACHE_DIR="${BASE_DIR}/cache"
-TMP_DIR="${BASE_DIR}/tmp"
-```
-
-### Immutability
-
-By default, Dotenv will NOT overwrite existing environment variables that are
-already set in the environment.
-
 Usage Notes
 -----------
 
@@ -98,19 +113,61 @@ When a new developer clones your codebase, they will have an additional
 **one-time step** to manually copy the `.env.example` file to `.env` and fill-in
 their own values (or get any sensitive values from a project co-worker).
 
-aspdotenv is made for development environments, and generally should not be
-used in production. In production, the actual environment variables should be
-set so that there is no overhead of loading the `.env` file on each request.
-This can be achieved via an automated deployment process with tools like
-Vagrant, chef, or Puppet, or can be set manually with cloud hosts like
-Pagodabox and Heroku.
+Environment variables order
+---------------------------
 
-### Command Line Scripts
+We try to use [PHP EGPCS (Environment, Get, Post, Cookie, and Server)](http://us.php.net/manual/en/ini.core.php#ini.variables-order).
 
-If you need to use environment variables that you have set in your `.env` file
-in a command line script that doesn't use the Dotenv library, you can `source`
-it into your local shell session:
+So, remember it when your application is trying to load a variable that was set in more than one place.
 
+Top is used:
+
+* `.env` file
+* SO environment variable
+* Request.ServerVariables
+
+### Example 1 (`.env` file and SO Environment Variable)
+
+* `.env`
+
+ ```shell
+TEMP=my_name
 ```
-source .env
+
+* SO Environment Variable
+
+```shell
+TEMP=another_name
+```
+
+* Result in asp
+```
+<%
+Response.Write("TEMP: " & env.getenv("TEMP") & "<br>" & vbCrLf)
+
+' TEMP: my_name
+%>
+```
+
+### Example 2 (SO Environment Variable and Request.ServerVariables)
+
+* SO Environment Variable
+
+ ```shell
+REMOTE_USER=my_name
+```
+
+* Request.ServerVariables
+
+```shell
+REMOTE_USER=another_name
+```
+
+* Result in asp
+```
+<%
+Response.Write("REMOTE_USER: " & env.getenv("REMOTE_USER") & "<br>" & vbCrLf)
+
+' REMOTE_USER: my_name
+%>
 ```
